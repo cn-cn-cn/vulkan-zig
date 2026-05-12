@@ -341,7 +341,7 @@ const Fields = union(enum) {
 };
 
 // returns .{ size, nullable }
-fn lenToPointer(fields: Fields, len: []const u8) struct {registry.Pointer.PointerSize, bool} {
+fn lenToPointer(fields: Fields, len: []const u8) struct { registry.Pointer.PointerSize, bool } {
     switch (fields) {
         .command => |params| {
             for (params) |*param| {

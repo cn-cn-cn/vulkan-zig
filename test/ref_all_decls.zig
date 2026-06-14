@@ -99,10 +99,10 @@ comptime {
 
 fn reallyRefAllDecls(comptime T: type) void {
     switch (@typeInfo(T)) {
-        .@"struct", .@"union" => {
+        inline .@"struct", .@"union" => |info| {
             reallyRefAllContainerDecls(T);
-            inline for (std.meta.fields(T)) |field| {
-                reallyRefAllDecls(field.type);
+            inline for (info.field_types) |field_ty| {
+                reallyRefAllDecls(field_ty);
             }
         },
         .@"enum", .@"opaque" => {
@@ -114,8 +114,8 @@ fn reallyRefAllDecls(comptime T: type) void {
 
 fn reallyRefAllContainerDecls(comptime T: type) void {
     inline for (comptime std.meta.declarations(T)) |decl| {
-        if (@TypeOf(@field(T, decl.name)) == type) {
-            reallyRefAllDecls(@field(T, decl.name));
+        if (@TypeOf(@field(T, decl)) == type) {
+            reallyRefAllDecls(@field(T, decl));
         }
     }
 }

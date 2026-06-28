@@ -272,7 +272,7 @@ fn parseContainer(allocator: Allocator, ty: *xml.Element, is_union: bool, api: r
         try parsePointerMeta(.{ .container = members }, &member.field_type, member_elem);
 
         // pNext isn't always properly marked as optional, so just manually override it,
-        if (mem.eql(u8, member.name, "pNext")) {
+        if (mem.eql(u8, member.name, "pNext") or mem.eql(u8, member.name, "next")) {
             member.field_type.pointer.is_optional = true;
         }
 

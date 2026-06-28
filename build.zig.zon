@@ -1,6 +1,6 @@
 .{
-    .name = .vulkan,
-    .fingerprint = 0xbe155a03c72db6af,
+    .name = .openxr,
+    .fingerprint = 0xa6eefe16b79ef32a,
     .version = "0.0.0",
     .minimum_zig_version = "0.17.0-dev.836+e357134f0",
     .paths = .{

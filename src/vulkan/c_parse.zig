@@ -256,16 +256,39 @@ pub const XmlCTokenizer = struct {
 
 // TYPEDEF = kw_typedef DECLARATION ';'
 pub fn parseTypedef(allocator: Allocator, xctok: *XmlCTokenizer, ptrs_optional: bool) !registry.Declaration {
-    _ = try xctok.expect(.kw_typedef);
-    const decl = try parseDeclaration(allocator, xctok, ptrs_optional);
-    _ = try xctok.expect(.semicolon);
-    if (try xctok.peek()) |_| {
-        return error.InvalidSyntax;
-    }
+    const first_tok = (try xctok.next()) orelse return error.UnexpectedEof;
 
-    return registry.Declaration{
-        .name = decl.name orelse return error.MissingTypeIdentifier,
-        .decl_type = .{ .typedef = decl.decl_type },
+    _ = switch (first_tok.kind) {
+        .kw_typedef => {
+            const decl = try parseDeclaration(allocator, xctok, ptrs_optional);
+            _ = try xctok.expect(.semicolon);
+            if (try xctok.peek()) |_| {
+                return error.InvalidSyntax;
+            }
+
+            return registry.Declaration{
+                .name = decl.name orelse return error.MissingTypeIdentifier,
+                .decl_type = .{ .typedef = decl.decl_type },
+            };
+        },
+        .type_name => {
+            if (!mem.eql(u8, first_tok.text, "XR_DEFINE_ATOM")) {
+                return error.InvalidSyntax;
+            }
+
+            _ = try xctok.expect(.lparen);
+            const name = try xctok.expect(.name);
+            _ = try xctok.expect(.rparen);
+
+            return registry.Declaration{
+                .name = name.text,
+                .decl_type = .{ .typedef = TypeInfo{ .name = "uint64_t" } },
+            };
+        },
+        else => {
+            std.debug.print("unexpected first token in typedef: {}\n", .{first_tok.kind});
+            return error.InvalidSyntax;
+        },
     };
 }
 

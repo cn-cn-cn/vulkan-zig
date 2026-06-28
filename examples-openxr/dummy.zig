@@ -9,10 +9,14 @@ pub const VkResult = *opaque {};
 pub const VkDevice = *opaque {};
 pub const wchar_t = u16;
 
-const BaseDispatch = xr.BaseWrapper;
+// const BaseDispatch = xr.BaseWrapper;
 const InstanceDispatch = xr.InstanceWrapper;
 
 fn getProcAddr(instance: xr.Instance, name: [*:0]const u8) xr.PfnVoidFunction {
+    if (std.mem.eql(u8, std.mem.span(name), "xrCreateInstance")) {
+        return @ptrCast(&c.xrCreateInstance);
+    }
+
     var out: xr.PfnVoidFunction = undefined;
     const result = c.xrGetInstanceProcAddr(instance, name, &out);
     return switch (result) {
@@ -32,26 +36,28 @@ pub fn main() !void {
     var name: [128]u8 = undefined;
     std.mem.copyForwards(u8, name[0..], "openxr-zig-test" ++ [_]u8{0});
 
-    const xrb = BaseDispatch.load(getProcAddr);
+    // const xrb = BaseDispatch.load(getProcAddr);
 
-    const inst = try xrb.createInstance(&.{
-        .application_info = .{
-            .application_name = name,
-            .application_version = 0,
-            .engine_name = name,
-            .engine_version = 0,
-            .api_version = xr.makeApiVersion(1, 0, 0),
+    var inst: xr.Instance = undefined;
+    _ = c.xrCreateInstance(
+        &.{
+            .application_info = .{
+                .application_name = name,
+                .application_version = 0,
+                .engine_name = name,
+                .engine_version = 0,
+                .api_version = xr.makeApiVersion(1, 0, 0),
+            },
         },
-    });
+        &inst,
+    );
 
     const xri = InstanceDispatch.load(inst, getProcAddr);
     defer xri.destroyInstance(inst) catch {};
 
     const system = try xri.getSystem(inst, &.{ .form_factor = .head_mounted_display });
 
-    var system_properties: xr.SystemProperties = undefined;
-    system_properties.type = .type_system_properties;
-    _ = xri.dispatch.xrGetSystemProperties.?(inst, system, &system_properties);
+    const system_properties = try xri.getSystemProperties(inst, system);
 
     std.debug.print(
         \\system {}:

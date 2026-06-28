@@ -259,13 +259,10 @@ const additional_namespaces = std.StaticStringMap([]const u8).initComptime(.{
 
 const dispatch_override_functions = std.StaticStringMap(CommandDispatchType).initComptime(.{
     // See https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#initialization-functionpointers
-    .{ "vkGetInstanceProcAddr", .base },
-    .{ "vkGetDeviceProcAddr", .instance },
-
-    .{ "vkEnumerateInstanceVersion", .base },
-    .{ "vkEnumerateInstanceExtensionProperties", .base },
-    .{ "vkEnumerateInstanceLayerProperties", .base },
-    .{ "vkCreateInstance", .base },
+    .{ "xrGetInstanceProcAddr", .base },
+    .{ "xrCreateInstance", .base },
+    .{ "xrEnumerateApiLayerProperties", .base },
+    .{ "xrEnumerateInstanceExtensionProperties", .base },
 });
 
 // Functions that return an array of objects via a count and data pointer.
@@ -609,9 +606,9 @@ const Renderer = struct {
                 }
             },
             .name => |name| {
-                if (dispatchable_handles.get(name) != null) {
-                    return .dispatch_handle;
-                }
+                // if (dispatchable_handles.get(name) != null) {
+                //     return .dispatch_handle;
+                // }
 
                 if ((try self.extractBitflagName(name)) != null or self.isFlags(name)) {
                     return .bitflags;
@@ -1330,8 +1327,8 @@ const Renderer = struct {
 
     fn renderDispatchTables(self: *Self) !void {
         try self.renderDispatchTable(.base);
-        try self.renderDispatchTable(.instance);
-        try self.renderDispatchTable(.device);
+        // try self.renderDispatchTable(.instance);
+        // try self.renderDispatchTable(.device);
     }
 
     fn renderDispatchTable(self: *Self, dispatch_type: CommandDispatchType) !void {
@@ -1363,8 +1360,8 @@ const Renderer = struct {
     fn renderWrappers(self: *Self) !void {
         try self.writer.writeAll(command_flags_mixin);
         try self.renderWrappersOfDispatchType(.base);
-        try self.renderWrappersOfDispatchType(.instance);
-        try self.renderWrappersOfDispatchType(.device);
+        // try self.renderWrappersOfDispatchType(.instance);
+        // try self.renderWrappersOfDispatchType(.device);
     }
 
     fn renderWrappersOfDispatchType(self: *Self, dispatch_type: CommandDispatchType) !void {
@@ -1437,7 +1434,8 @@ const Renderer = struct {
     }
 
     fn renderProxies(self: *Self) !void {
-        try self.renderProxy(.instance, "XrInstance", true);
+        _ = self;
+        // try self.renderProxy(.instance, "XrInstance", true);
         // try self.renderProxy(.device, "VkDevice", true);
         // try self.renderProxy(.device, "VkCommandBuffer", false);
         // try self.renderProxy(.device, "VkQueue", false);

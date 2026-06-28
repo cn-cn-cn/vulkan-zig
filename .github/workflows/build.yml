@@ -23,38 +23,45 @@ jobs:
     - name: Check formatting
       run: zig fmt --check .
 
-    - name: Fetch latest Vulkan SDK
+    - name: Install OpenXR Loader
       run: |
-        wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
-        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
         sudo apt update
-        sudo apt install shaderc
+        sudo apt install libopenxr-loader1
 
-    - name: Fetch latest vk.xml
+    - name: Fetch latest xr.xml
       run: |
-        wget https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/xml/vk.xml
-        wget https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/xml/video.xml
+        wget https://raw.githubusercontent.com/KhronosGroup/OpenXR-SDK/refs/heads/main/specification/registry/xr.xml
 
     - name: Test and install with latest zig & latest vk.xml
-      run: zig build test install -Dregistry=$(pwd)/vk.xml
+      run: zig build test install -Dregistry=$(pwd)/xr.xml
 
-    - name: Test and install with latest zig & latest vk.xml & latest video.xml
-      run: zig build test install -p zig-out-video -Dregistry=$(pwd)/vk.xml -Dvideo=$(pwd)/video.xml
+    - name: Generate xr.zig
+      run: zig-out/bin/openxr-zig-generator xr.xml xr.zig
 
-    - name: Build example with latest zig & vk.xml from dependency
-      run: zig build --build-file $(pwd)/examples/build.zig
+    - name: Sanity-check xr.zig
+      run: zig build-obj xr.zig
 
-    - name: Build example with latest zig & latest vk.xml
-      run: zig build --build-file $(pwd)/examples/build.zig -Doverride-registry=$(pwd)/vk.xml
+    - name: Build example
+      run: zig build
+      working-directory: ./examples-openxr
 
-    # - name: Build example with latest zig & vk.xml from dependency & use zig shaders
-    #   run: zig build --build-file $(pwd)/examples/build.zig -Dzig-shader
+    # - name: Test and install with latest zig & latest vk.xml & latest video.xml
+    #   run: zig build test install -p zig-out-video -Dregistry=$(pwd)/vk.xml -Dvideo=$(pwd)/video.xml
 
-    - name: Archive vk.zig
-      uses: actions/upload-artifact@v4
-      with:
-        name: vk.zig
-        path: |
-          zig-out/src/vk.zig
-          zig-out-video/src/vk.zig
-        if-no-files-found: error
+    # - name: Build example with latest zig & vk.xml from dependency
+    #   run: zig build --build-file $(pwd)/examples/build.zig
+
+    # - name: Build example with latest zig & latest vk.xml
+    #   run: zig build --build-file $(pwd)/examples/build.zig -Doverride-registry=$(pwd)/vk.xml
+
+    # # - name: Build example with latest zig & vk.xml from dependency & use zig shaders
+    # #   run: zig build --build-file $(pwd)/examples/build.zig -Dzig-shader
+
+    # - name: Archive vk.zig
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: vk.zig
+    #     path: |
+    #       zig-out/src/vk.zig
+    #       zig-out-video/src/vk.zig
+    #     if-no-files-found: error

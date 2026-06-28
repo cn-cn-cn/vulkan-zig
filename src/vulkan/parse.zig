@@ -120,7 +120,7 @@ fn parseTypes(
 fn parseForeigntype(ty: *xml.Element) !registry.Declaration {
     const name = ty.getAttribute("name") orelse return error.InvalidRegistry;
     const depends = ty.getAttribute("requires") orelse if (mem.eql(u8, name, "int"))
-        "vk_platform" // for some reason, int doesn't depend on vk_platform (but the other c types do)
+        "openxr_platform_defines" // for some reason, int doesn't depend on openxr_platform_defines (but the other c types do)
     else
         return error.InvalidRegistry;
 
@@ -140,9 +140,9 @@ fn parseBitmaskType(ty: *xml.Element) !registry.Declaration {
     } else {
         const flags_type = ty.getCharData("type") orelse return error.InvalidRegistry;
 
-        const bitwidth: u8 = if (mem.eql(u8, flags_type, "VkFlags"))
+        const bitwidth: u8 = if (mem.eql(u8, flags_type, "XrFlags"))
             32
-        else if (mem.eql(u8, flags_type, "VkFlags64"))
+        else if (mem.eql(u8, flags_type, "XrFlags64"))
             64
         else
             return error.InvalidRegistry;
@@ -173,8 +173,8 @@ fn parseHandleType(ty: *xml.Element) !registry.Declaration {
     } else {
         const name = ty.getCharData("name") orelse return error.InvalidRegistry;
         const handle_type = ty.getCharData("type") orelse return error.InvalidRegistry;
-        const dispatchable = mem.eql(u8, handle_type, "VK_DEFINE_HANDLE");
-        if (!dispatchable and !mem.eql(u8, handle_type, "VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {
+        const dispatchable = mem.eql(u8, handle_type, "XR_DEFINE_HANDLE");
+        if (!dispatchable) {
             return error.InvalidRegistry;
         }
 
@@ -730,20 +730,12 @@ fn parseDefines(
         const comment = ty.getAttribute("comment");
 
         const name = ty.getCharData("name") orelse continue;
-        if (mem.eql(u8, name, "VK_HEADER_VERSION") or mem.eql(u8, name, "VKSC_API_VARIANT")) {
-            try api_constants.append(allocator, .{
-                .name = name,
-                .value = .{ .expr = mem.trim(u8, ty.children[2].char_data, " ") },
-                .comment = comment,
-            });
-        } else {
-            var xctok = cparse.XmlCTokenizer.init(ty);
-            try api_constants.append(allocator, .{
-                .name = name,
-                .value = cparse.parseVersion(&xctok) catch continue,
-                .comment = comment,
-            });
-        }
+        var xctok = cparse.XmlCTokenizer.init(ty);
+        try api_constants.append(allocator, .{
+            .name = name,
+            .value = cparse.parseVersion(&xctok) catch continue,
+            .comment = comment,
+        });
     }
 }
 
@@ -916,11 +908,11 @@ fn parseRequire(allocator: Allocator, require: *xml.Element, extnumber: ?u31, ap
 
     const required_feature_level = blk: {
         const feature_level = require.getAttribute("feature") orelse break :blk null;
-        if (!mem.startsWith(u8, feature_level, "VK_VERSION_")) {
+        if (!mem.startsWith(u8, feature_level, "XR_VERSION_")) {
             return error.InvalidRegistry;
         }
 
-        break :blk try splitFeatureLevel(feature_level["VK_VERSION_".len..], "_");
+        break :blk try splitFeatureLevel(feature_level["XR_VERSION_".len..], "_");
     };
 
     return registry.Require{
@@ -993,8 +985,8 @@ fn parseExtension(allocator: Allocator, extension: *xml.Element, api: registry.A
 
     const promoted_to: registry.Extension.Promotion = blk: {
         const promotedto = extension.getAttribute("promotedto") orelse break :blk .none;
-        if (mem.startsWith(u8, promotedto, "VK_VERSION_")) {
-            const feature_level = try splitFeatureLevel(promotedto["VK_VERSION_".len..], "_");
+        if (mem.startsWith(u8, promotedto, "XR_VERSION_")) {
+            const feature_level = try splitFeatureLevel(promotedto["XR_VERSION_".len..], "_");
             break :blk .{ .feature = feature_level };
         }
 

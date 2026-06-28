@@ -265,10 +265,10 @@ const CommandDispatchType = enum {
 };
 
 const dispatchable_handles = std.StaticStringMap(CommandDispatchType).initComptime(.{
-    .{ "VkDevice", .device },
-    .{ "VkCommandBuffer", .device },
-    .{ "VkQueue", .device },
-    .{ "VkInstance", .instance },
+    // .{ "VkDevice", .device },
+    // .{ "VkCommandBuffer", .device },
+    // .{ "VkQueue", .device },
+    .{ "XrInstance", .instance },
 });
 
 const additional_namespaces = std.StaticStringMap([]const u8).initComptime(.{
@@ -1902,7 +1902,22 @@ const Renderer = struct {
             try self.writer.writeAll(": ");
             try self.renderTypeInfo(returns[0].return_value_type);
             try self.writer.writeAll(" = undefined;\n");
+            o: switch (returns[0].return_value_type) {
+                .name => |n| {
+                    const decl = (self.decls_by_name.get(n) orelse break :o);
+                    if (decl != .container) break :o;
+                    const container = decl.container;
+                    self.structure_types.get(container.stype orelse break :o) orelse break :o;
+
+                    try self.writeIdentifierWithCase(.snake, return_var_name);
+                    try self.writer.writeAll(".type = .");
+                    try self.writeIdentifierWithCase(.snake, container.stype.?["XR_".len..]);
+                    try self.writer.writeAll(";");
+                },
+                else => {},
+            }
         } else if (returns.len > 1) {
+            try self.writer.writeAll("if (true) @panic(\"TODO\");");
             try self.writer.writeAll("var return_values: ");
             try self.renderReturnStructName(name);
             try self.writer.writeAll(" = undefined;\n");

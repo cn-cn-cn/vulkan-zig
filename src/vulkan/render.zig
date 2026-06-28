@@ -327,8 +327,8 @@ fn eqlIgnoreCase(lhs: []const u8, rhs: []const u8) bool {
     return true;
 }
 
-pub fn trimVkNamespace(id: []const u8) []const u8 {
-    const prefixes = [_][]const u8{ "VK_", "vk", "Vk", "PFN_vk" };
+pub fn trimXrNamespace(id: []const u8) []const u8 {
+    const prefixes = [_][]const u8{ "XR_", "xr", "Xr", "PFN_xr" };
     for (prefixes) |prefix| {
         if (mem.startsWith(u8, id, prefix)) {
             return id[prefix.len..];
@@ -414,15 +414,15 @@ const Renderer = struct {
             }
         }
 
-        const vk_structure_type_decl = decls_by_name.get("VkStructureType") orelse return error.InvalidRegistry;
-        const vk_structure_type = switch (vk_structure_type_decl) {
+        const xr_structure_type_decl = decls_by_name.get("XrStructureType") orelse return error.InvalidRegistry;
+        const xr_structure_type = switch (xr_structure_type_decl) {
             .enumeration => |e| e,
             else => return error.InvalidRegistry,
         };
         var structure_types = std.StringHashMap(void).init(allocator);
         errdefer structure_types.deinit();
 
-        for (vk_structure_type.fields) |field| {
+        for (xr_structure_type.fields) |field| {
             try structure_types.put(field.name, {});
         }
 
@@ -579,7 +579,7 @@ const Renderer = struct {
                     const child_name = ptr.child.name;
                     if (mem.eql(u8, child_name, "void")) {
                         return .other;
-                    } else if (builtin_types.get(child_name) == null and trimVkNamespace(child_name).ptr == child_name.ptr) {
+                    } else if (builtin_types.get(child_name) == null and trimXrNamespace(child_name).ptr == child_name.ptr) {
                         return .other; // External type
                     }
                 }
@@ -771,7 +771,7 @@ const Renderer = struct {
             return;
         } else if (try self.extractBitflagName(name)) |bitflag_name| {
             try self.writeIdentifierFmt("{s}Flags{s}{s}", .{
-                trimVkNamespace(bitflag_name.base_name),
+                trimXrNamespace(bitflag_name.base_name),
                 @as([]const u8, if (bitflag_name.revision) |revision| revision else ""),
                 @as([]const u8, if (bitflag_name.tag) |tag| tag else ""),
             });
@@ -821,7 +821,7 @@ const Renderer = struct {
                 if (param.param_type == .name) {
                     if (try self.extractBitflagName(param.param_type.name)) |bitflag_name| {
                         try self.writeIdentifierFmt("{s}Flags{s}{s}", .{
-                            trimVkNamespace(bitflag_name.base_name),
+                            trimXrNamespace(bitflag_name.base_name),
                             @as([]const u8, if (bitflag_name.revision) |revision| revision else ""),
                             @as([]const u8, if (bitflag_name.tag) |tag| tag else ""),
                         });
@@ -1399,7 +1399,7 @@ const Renderer = struct {
     }
 
     fn renderCommandPtrName(self: *Self, name: []const u8) !void {
-        try self.writeIdentifierFmt("Pfn{s}", .{trimVkNamespace(name)});
+        try self.writeIdentifierFmt("Pfn{s}", .{trimXrNamespace(name)});
     }
 
     fn renderCommandPtrs(self: *Self) !void {
@@ -1431,10 +1431,10 @@ const Renderer = struct {
         );
         for (self.registry.features) |feature| {
             try self.writer.writeAll("pub const ");
-            try self.writeIdentifierWithCase(.snake, trimVkNamespace(feature.name));
+            try self.writeIdentifierWithCase(.snake, trimXrNamespace(feature.name));
             try self.writer.writeAll("= ApiInfo {\n");
             try self.writer.print(".name = \"{s}\", .version = makeApiVersion(0, {}, {}, 0),\n}};\n", .{
-                trimVkNamespace(feature.name),
+                trimXrNamespace(feature.name),
                 feature.level.major,
                 feature.level.minor,
             });
@@ -1453,9 +1453,9 @@ const Renderer = struct {
             if (ext.extension_type == .video) {
                 // These are already in the right form, and the auto-casing style transformer
                 // is prone to messing up these names.
-                try self.writeIdentifier(trimVkNamespace(ext.name));
+                try self.writeIdentifier(trimXrNamespace(ext.name));
             } else {
-                try self.writeIdentifierWithCase(.snake, trimVkNamespace(ext.name));
+                try self.writeIdentifierWithCase(.snake, trimXrNamespace(ext.name));
             }
             try self.writer.writeAll("= ApiInfo {\n");
             try self.writer.print(".name = \"{s}\", .version = ", .{ext.name});
@@ -1613,7 +1613,7 @@ const Renderer = struct {
             \\            .wrapper = wrapper,
             \\        }};
             \\    }}
-        , .{ trimVkNamespace(dispatch_handle), loader_name });
+        , .{ trimXrNamespace(dispatch_handle), loader_name });
 
         for (self.registry.decls) |decl| {
             const decl_type = self.resolveAlias(decl.decl_type) catch continue;
@@ -1654,7 +1654,7 @@ const Renderer = struct {
     }
 
     fn renderProxyCommand(self: *Self, name: []const u8, command: reg.Command, dispatch_handle: []const u8) !void {
-        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "VkResult");
+        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "XrResult");
         const returns = try self.extractReturns(command);
 
         if (returns_vk_result) {
@@ -1679,7 +1679,7 @@ const Renderer = struct {
             \\{
             \\return self.wrapper.
         );
-        try self.writeIdentifierWithCase(.camel, trimVkNamespace(name));
+        try self.writeIdentifierWithCase(.camel, trimXrNamespace(name));
         try self.writer.writeByte('(');
         try self.renderProxyCallArgs(name, command.params, command.params, dispatch_handle);
         try self.writer.writeAll(
@@ -1697,7 +1697,7 @@ const Renderer = struct {
     }
 
     fn renderProxyCommandAlloc(self: *Self, wrapped_name: []const u8, command: reg.Command, dispatch_handle: []const u8) !void {
-        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "VkResult");
+        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "XrResult");
 
         const name = try self.makeAllocWrapperName(wrapped_name);
         defer self.allocator.free(name);
@@ -1721,7 +1721,7 @@ const Renderer = struct {
             \\{
             \\return self.wrapper.
         );
-        try self.writeIdentifierWithCase(.camel, trimVkNamespace(name));
+        try self.writeIdentifierWithCase(.camel, trimXrNamespace(name));
         try self.writer.writeByte('(');
         try self.renderProxyCallArgs(wrapped_name, params, command.params, dispatch_handle);
         try self.writer.writeAll(
@@ -1780,10 +1780,10 @@ const Renderer = struct {
         kind: WrapperKind,
     ) !void {
         const trimmed_name = switch (kind) {
-            .wrapper => trimVkNamespace(name),
+            .wrapper => trimXrNamespace(name),
             .proxy => blk: {
                 // Strip additional namespaces: queue for VkQueue and cmd for VkCommandBuffer
-                const no_vk = trimVkNamespace(name);
+                const no_vk = trimXrNamespace(name);
                 const additional_namespace = additional_namespaces.get(dispatch_handle) orelse break :blk no_vk;
                 if (std.mem.startsWith(u8, no_vk, additional_namespace)) {
                     break :blk no_vk[additional_namespace.len..];
@@ -1836,7 +1836,7 @@ const Renderer = struct {
 
         try self.writer.writeAll(") ");
 
-        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "VkResult");
+        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "XrResult");
         if (returns_vk_result) {
             try self.renderErrorSetName(name);
             try self.writer.writeByte('!');
@@ -1898,7 +1898,7 @@ const Renderer = struct {
 
         if (command.return_type.* == .name) {
             const return_name = command.return_type.name;
-            if (!mem.eql(u8, return_name, "void") and !mem.eql(u8, return_name, "VkResult")) {
+            if (!mem.eql(u8, return_name, "void") and !mem.eql(u8, return_name, "XrResult")) {
                 try returns.append(allocator, .{
                     .name = "return_value",
                     .return_value_type = command.return_type.*,
@@ -1908,7 +1908,7 @@ const Renderer = struct {
         }
 
         if (command.success_codes.len > 1) {
-            if (command.return_type.* != .name or !mem.eql(u8, command.return_type.name, "VkResult")) {
+            if (command.return_type.* != .name or !mem.eql(u8, command.return_type.name, "XrResult")) {
                 return error.InvalidRegistry;
             }
             try returns.append(allocator, .{
@@ -1916,7 +1916,7 @@ const Renderer = struct {
                 .return_value_type = command.return_type.*,
                 .origin = .inner_return_value,
             });
-        } else if (command.success_codes.len == 1 and !mem.eql(u8, command.success_codes[0], "VK_SUCCESS")) {
+        } else if (command.success_codes.len == 1 and !mem.eql(u8, command.success_codes[0], "XR_SUCCESS")) {
             return error.InvalidRegistry;
         }
 
@@ -1934,11 +1934,11 @@ const Renderer = struct {
     }
 
     fn renderReturnStructName(self: *Self, command_name: []const u8) !void {
-        try self.writeIdentifierFmt("{s}Result", .{trimVkNamespace(command_name)});
+        try self.writeIdentifierFmt("{s}Result", .{trimXrNamespace(command_name)});
     }
 
     fn renderErrorSetName(self: *Self, name: []const u8) !void {
-        try self.writeIdentifierWithCase(.title, trimVkNamespace(name));
+        try self.writeIdentifierWithCase(.title, trimXrNamespace(name));
         try self.writer.writeAll("Error");
     }
 
@@ -1956,7 +1956,7 @@ const Renderer = struct {
     }
 
     fn renderWrapper(self: *Self, name: []const u8, command: reg.Command) !void {
-        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "VkResult");
+        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "XrResult");
         const returns_void = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "void");
 
         const returns = try self.extractReturns(command);
@@ -2082,7 +2082,7 @@ const Renderer = struct {
     }
 
     fn renderWrapperAlloc(self: *Self, wrapped_name: []const u8, command: reg.Command) !void {
-        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "VkResult");
+        const returns_vk_result = command.return_type.* == .name and mem.eql(u8, command.return_type.name, "XrResult");
 
         const name = try self.makeAllocWrapperName(wrapped_name);
         defer self.allocator.free(name);
@@ -2197,13 +2197,13 @@ const Renderer = struct {
 
         for (command.success_codes) |success| {
             try self.writer.writeAll("Result.");
-            try self.renderEnumFieldName("VkResult", success);
+            try self.renderEnumFieldName("XrResult", success);
             try self.writer.writeAll(" => {},");
         }
 
         for (command.error_codes) |err| {
             try self.writer.writeAll("Result.");
-            try self.renderEnumFieldName("VkResult", err);
+            try self.renderEnumFieldName("XrResult", err);
             try self.writer.writeAll(" => return error.");
             try self.renderResultAsErrorName(err);
             try self.writer.writeAll(", ");
@@ -2231,7 +2231,7 @@ const Renderer = struct {
         } else {
             // Apparently some commands (VkAcquireProfilingLockInfoKHR) return
             // success codes as error...
-            try self.writeIdentifierWithCase(.title, trimVkNamespace(name));
+            try self.writeIdentifierWithCase(.title, trimXrNamespace(name));
         }
     }
 
